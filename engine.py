@@ -81,25 +81,36 @@ class Rocket:
     def clamp_angle(self, angle):
         return max(-ANGLE_RANGE, min(ANGLE_RANGE, angle))
 
-    def update(self):
+    def update(self, isRocket2=False):
         keys = pygame.key.get_pressed()
-        
+
         # if any key is unpressed, turn off the fire
         self.fire_1_on = False
         self.fire_2_on = False
 
-        if keys[pygame.K_LEFT]:
-            self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 + BOOSTER_ANGLE_INCREMENT)
-            self.fire_1_on = True
-        if keys[pygame.K_RIGHT]:
-            self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 - BOOSTER_ANGLE_INCREMENT)
-            self.fire_1_on = True
-        if keys[pygame.K_a]:
-            self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 + BOOSTER_ANGLE_INCREMENT)
-            self.fire_2_on = True
-        if keys[pygame.K_d]:
-            self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 - BOOSTER_ANGLE_INCREMENT)
-            self.fire_2_on = True
+        if not isRocket2:
+            if keys[pygame.K_LEFT]:
+                self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 + BOOSTER_ANGLE_INCREMENT)
+                self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 + BOOSTER_ANGLE_INCREMENT)
+                self.fire_1_on = True
+                self.fire_2_on = True
+            if keys[pygame.K_RIGHT]:
+                self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 - BOOSTER_ANGLE_INCREMENT)
+                self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 - BOOSTER_ANGLE_INCREMENT)
+                self.fire_1_on = True
+                self.fire_2_on = True
+        else:
+            if keys[pygame.K_a]:
+                self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 + BOOSTER_ANGLE_INCREMENT)
+                self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 + BOOSTER_ANGLE_INCREMENT)
+                self.fire_1_on = True
+                self.fire_2_on = True
+            if keys[pygame.K_d]:
+                self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 - BOOSTER_ANGLE_INCREMENT)
+                self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 - BOOSTER_ANGLE_INCREMENT)
+                self.fire_1_on = True
+                self.fire_2_on = True
+
         if keys[pygame.K_t]:
             self.fire_1_on = True
             self.fire_2_on = True
@@ -133,6 +144,12 @@ class Rocket:
             self.y = SCREEN_HEIGHT - rocket_img.get_height()
             self.velocity_y = 0
 
+        # Keep constant distance between rockets
+        if not isRocket2:
+            rocket2.adjust_position(self)
+        else:
+            self.adjust_position(rocket2)
+
         # Check for collision with the current target
         if self.current_target_index < len(TARGETS):
             target_x, target_y = TARGETS[self.current_target_index]
@@ -147,9 +164,15 @@ class Rocket:
             if distance > 0:
                 self.score += 100 / distance
 
-            # Check if rocket reaches the target
-            # if self.rocket_rect.colliderect(pygame.Rect(target_x, target_y, TARGET_SIDE * DIMENSION_MULTIPLIER, TARGET_SIDE * DIMENSION_MULTIPLIER)):
-                # self.current_target_index += 1
+    def adjust_position(self, other_rocket):
+        # Maintain constant distance between rockets
+        distance = math.sqrt((self.x - other_rocket.x) ** 2 + (self.y - other_rocket.y) ** 2)
+        if distance != 0:
+            scale = 100 / distance
+            self.x = other_rocket.x + (self.x - other_rocket.x) * scale
+            self.y = other_rocket.y + (self.y - other_rocket.y) * scale
+            self.rocket_rect.x = self.x
+            self.rocket_rect.y = self.y
 
     def draw_target(self):
         if self.current_target_index < len(TARGETS):
@@ -157,8 +180,30 @@ class Rocket:
             target_rect = target_img.get_rect(center=(target_x, target_y))
             screen.blit(target_img, target_rect.topleft)
 
-# Create an instance of Rocket
-rocket = Rocket(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    def draw_connecting_rod(self, other_rocket):
+        # Calculate positions of rockets
+        rocket1_center = (self.x + rocket_img.get_width() // 2, self.y + rocket_img.get_height() // 2)
+        rocket2_center = (other_rocket.x + rocket_img.get_width() // 2, other_rocket.y + rocket_img.get_height() // 2)
+
+        # Calculate distance and direction vector
+        distance = math.sqrt((rocket1_center[0] - rocket2_center[0]) ** 2 + (rocket1_center[1] - rocket2_center[1]) ** 2)
+        direction = ((rocket2_center[0] - rocket1_center[0]), (rocket2_center[1] - rocket1_center[1]))
+
+        # Normalize direction vector
+        if distance > 0:
+            direction = (direction[0] / distance, direction[1] / distance)
+
+        # Calculate rod end positions
+        rod_length = 100
+        rod_end1 = (rocket1_center[0] + direction[0] * rod_length, rocket1_center[1] + direction[1] * rod_length)
+        rod_end2 = (rocket2_center[0] - direction[0] * rod_length, rocket2_center[1] - direction[1] * rod_length)
+
+        # Draw the rod
+        pygame.draw.line(screen, (255, 255, 255), rod_end1, rod_end2, 3)
+
+# Create instances of Rocket
+rocket = Rocket(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2)  # Example position for the first rocket
+rocket2 = Rocket(SCREEN_WIDTH // 2 + 120, SCREEN_HEIGHT // 2)  # Example position for the second rocket
 
 # Main game loop
 running = True
@@ -171,10 +216,18 @@ while running:
             running = False
 
     rocket.update()
+    rocket2.update(isRocket2=True)
 
     screen.fill((0, 0, 0))
     rocket.draw()
+    rocket2.draw()
+    rocket.adjust_position(rocket2)
+    rocket2.adjust_position(rocket)
     rocket.draw_target()
+    rocket2.draw_target()
+
+    # Draw connecting rod between rockets
+    rocket.draw_connecting_rod(rocket2)
 
     # Display score
     font = pygame.font.SysFont(None, 36)
