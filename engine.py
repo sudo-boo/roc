@@ -17,8 +17,8 @@ THRUST = float(config['DEFAULT']['THRUST'])
 GRAVITY = float(config['DEFAULT']['GRAVITY'])
 THRUST_X_COMPONENT = float(config['DEFAULT']['THRUST_X_COMPONENT'])
 THRUST_Y_COMPONENT = float(config['DEFAULT']['THRUST_Y_COMPONENT'])
-ROCKET_HEIGHT = float(config['DEFAULT']['ROCKET_BODY_HEIGHT'])
-ROCKET_WIDTH = float(config['DEFAULT']['ROCKET_BODY_WIDTH'])
+DRONE_WIDTH = float(config['DEFAULT']['DRONE_BODY_WIDTH'])
+DRONE_HEIGHT = float(config['DEFAULT']['DRONE_BODY_HEIGHT'])
 BOOSTER_HEIGHT = float(config['DEFAULT']['BOOSTER_HEIGHT'])
 BOOSTER_WIDTH = float(config['DEFAULT']['BOOSTER_WIDTH'])
 FIRE_HEIGHT = float(config['DEFAULT']['FIRE_HEIGHT'])
@@ -30,13 +30,13 @@ TARGETS = [(0, 0), (450, 200), (600, 600)]  # Assuming TARGETS is also read from
 # Initialize pygame
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Rocket Game")
+pygame.display.set_caption("roc-swarm")
 icon = pygame.image.load('res/rocket.png')
 pygame.display.set_icon(icon)
 
 # Load images
-rocket_img = pygame.image.load('res/body.png')
-rocket_img = pygame.transform.scale(rocket_img, (int(ROCKET_WIDTH * DIMENSION_MULTIPLIER), int(ROCKET_HEIGHT * DIMENSION_MULTIPLIER)))
+drone_body_img = pygame.image.load('res/body.png')
+drone_body_img = pygame.transform.scale(drone_body_img, (int(DRONE_WIDTH * DIMENSION_MULTIPLIER), int(DRONE_HEIGHT * DIMENSION_MULTIPLIER)))
 booster_img = pygame.image.load('res/booster.png')
 booster_img = pygame.transform.scale(booster_img, (int(BOOSTER_WIDTH * DIMENSION_MULTIPLIER), int(BOOSTER_HEIGHT * DIMENSION_MULTIPLIER)))
 fire_img = pygame.image.load('res/fire.png')
@@ -44,8 +44,8 @@ fire_img = pygame.transform.scale(fire_img, (int(FIRE_WIDTH * DIMENSION_MULTIPLI
 target_img = pygame.image.load('res/target.png')
 target_img = pygame.transform.scale(target_img, (int(TARGET_SIDE * DIMENSION_MULTIPLIER), int(TARGET_SIDE * DIMENSION_MULTIPLIER)))
 
-class Rocket:
-    def __init__(self, x, y):
+class Booster:
+    def __init__(self, x, y, isBooster2=False):
         self.x = x
         self.y = y
         self.booster_angle_1 = INITIAL_BOOSTER_ANGLE_1
@@ -56,19 +56,60 @@ class Rocket:
         self.velocity_y = 0
         self.score = 0
         self.current_target_index = 0
-        self.rocket_rect = rocket_img.get_rect(center=(self.x, self.y))
+        self.booster_rect = booster_img.get_rect(center=(self.x, self.y))
+        self.isBooster2 = isBooster2
 
+        # Drone body setup
+        self.drone_body_img = drone_body_img
+        self.drone_body_rect = self.drone_body_img.get_rect(center=(self.x, self.y))
+
+    def draw_direction_arrow(self, other_booster):
+        # Calculate center positions
+        self_center_x, self_center_y = self.booster_rect.center
+        other_center_x, other_center_y = other_booster.booster_rect.center
+
+        # Midpoint between the two centers
+        midpoint_x = (self_center_x + other_center_x) / 2
+        midpoint_y = (self_center_y + other_center_y) / 2
+
+        # Vector from self to other booster
+        dx = other_center_x - self_center_x
+        dy = other_center_y - self_center_y
+
+        # Calculate perpendicular direction
+        length = math.sqrt(dx ** 2 + dy ** 2)
+        if length > 0:
+            perp_dx = -dy / length  # Perpendicular x direction
+            perp_dy = dx / length   # Perpendicular y direction
+
+            # Calculate arrow position
+            arrow_length = 20
+            arrow_end_x = midpoint_x + perp_dx * arrow_length
+            arrow_end_y = midpoint_y + perp_dy * arrow_length
+
+            # Draw arrow
+            pygame.draw.line(screen, (255, 0, 0), (midpoint_x, midpoint_y), (arrow_end_x, arrow_end_y), 3)
+    
+    def get_tilt(self, other_booster):
+        return math.degrees(math.atan2(other_booster.y - self.y, other_booster.x - self.x))
+    
     def draw(self):
-        screen.blit(rocket_img, self.rocket_rect.topleft)
-        self.draw_booster(self.x + 6.5 * DIMENSION_MULTIPLIER, self.y + 8.5 * DIMENSION_MULTIPLIER, self.booster_angle_1, self.fire_1_on)
-        self.draw_booster(self.x - 1.5 * DIMENSION_MULTIPLIER, self.y + 8.5 * DIMENSION_MULTIPLIER, self.booster_angle_2, self.fire_2_on)
+
+        # Draw the booster and fire
+        self.draw_booster(self.x + BOOSTER_WIDTH // 2  * DIMENSION_MULTIPLIER, self.y + 5.5 * DIMENSION_MULTIPLIER, self.booster_angle_1, self.fire_1_on)
+
+        # Draw the direction arrow
+        if not self.isBooster2:
+            self.draw_direction_arrow(drone.booster_2)
+        else:
+            self.draw_direction_arrow(drone.booster_1)
 
     def draw_booster(self, x, y, angle, fire_on):
         rotated_booster = pygame.transform.rotate(booster_img, angle)
         booster_rect = rotated_booster.get_rect(center=(x, y))
 
         if fire_on:
-            fire_offset = 1.8 * DIMENSION_MULTIPLIER + booster_img.get_height() // 2
+            fire_offset = 3.5 * DIMENSION_MULTIPLIER + booster_img.get_height() // 2
             fire_x = x + fire_offset * math.sin(math.radians(angle))
             fire_y = y + fire_offset * math.cos(math.radians(angle))
 
@@ -81,14 +122,14 @@ class Rocket:
     def clamp_angle(self, angle):
         return max(-ANGLE_RANGE, min(ANGLE_RANGE, angle))
 
-    def update(self, isRocket2=False):
+    def update(self):
         keys = pygame.key.get_pressed()
 
         # if any key is unpressed, turn off the fire
         self.fire_1_on = False
         self.fire_2_on = False
 
-        if not isRocket2:
+        if not self.isBooster2:
             if keys[pygame.K_LEFT]:
                 self.booster_angle_1 = self.clamp_angle(self.booster_angle_1 + BOOSTER_ANGLE_INCREMENT)
                 self.booster_angle_2 = self.clamp_angle(self.booster_angle_2 + BOOSTER_ANGLE_INCREMENT)
@@ -127,28 +168,25 @@ class Rocket:
         self.x += self.velocity_x
         self.y += self.velocity_y
 
-        self.rocket_rect.x = self.x
-        self.rocket_rect.y = self.y
+        self.booster_rect.x = self.x
+        self.booster_rect.y = self.y
+        self.drone_body_rect.x = self.x
+        self.drone_body_rect.y = self.y
 
+        # Prevent drone from moving out of the screen and stop velocity on collision
         if self.x < 0:
             self.x = 0
             self.velocity_x = 0
-        elif self.x > SCREEN_WIDTH - rocket_img.get_width():
-            self.x = SCREEN_WIDTH - rocket_img.get_width()
+        elif self.x > SCREEN_WIDTH - booster_img.get_width():
+            self.x = SCREEN_WIDTH - booster_img.get_width()
             self.velocity_x = 0
 
         if self.y < 0:
             self.y = 0
             self.velocity_y = 0
-        elif self.y > SCREEN_HEIGHT - rocket_img.get_height():
-            self.y = SCREEN_HEIGHT - rocket_img.get_height()
+        elif self.y > SCREEN_HEIGHT - booster_img.get_height():
+            self.y = SCREEN_HEIGHT - booster_img.get_height()
             self.velocity_y = 0
-
-        # Keep constant distance between rockets
-        if not isRocket2:
-            rocket2.adjust_position(self)
-        else:
-            self.adjust_position(rocket2)
 
         # Check for collision with the current target
         if self.current_target_index < len(TARGETS):
@@ -156,23 +194,25 @@ class Rocket:
             target_center_x = target_x + TARGET_SIDE * DIMENSION_MULTIPLIER / 2
             target_center_y = target_y + TARGET_SIDE * DIMENSION_MULTIPLIER / 2
 
-            # Calculate distance between rocket tip and target center
-            distance = math.sqrt((self.x + rocket_img.get_width() / 2 - target_center_x) ** 2 +
-                                 (self.y - target_center_y) ** 2)
+            # Calculate distance between drone tip and target center
+            distance = math.sqrt((self.x + booster_img.get_width() / 2 - target_center_x) ** 2 +
+                                (self.y - target_center_y) ** 2)
 
             # Score inversely proportional to distance
             if distance > 0:
                 self.score += 100 / distance
 
-    def adjust_position(self, other_rocket):
-        # Maintain constant distance between rockets
-        distance = math.sqrt((self.x - other_rocket.x) ** 2 + (self.y - other_rocket.y) ** 2)
+    def adjust_position(self, other_drone):
+        # Maintain constant distance between drones
+        distance = math.sqrt((self.x - other_drone.x) ** 2 + (self.y - other_drone.y) ** 2)
         if distance != 0:
             scale = 100 / distance
-            self.x = other_rocket.x + (self.x - other_rocket.x) * scale
-            self.y = other_rocket.y + (self.y - other_rocket.y) * scale
-            self.rocket_rect.x = self.x
-            self.rocket_rect.y = self.y
+            self.x = other_drone.x + (self.x - other_drone.x) * scale
+            self.y = other_drone.y + (self.y - other_drone.y) * scale
+            self.booster_rect.x = self.x
+            self.booster_rect.y = self.y
+            self.drone_body_rect.x = self.x
+            self.drone_body_rect.y = self.y
 
     def draw_target(self):
         if self.current_target_index < len(TARGETS):
@@ -180,30 +220,28 @@ class Rocket:
             target_rect = target_img.get_rect(center=(target_x, target_y))
             screen.blit(target_img, target_rect.topleft)
 
-    def draw_connecting_rod(self, other_rocket):
-        # Calculate positions of rockets
-        rocket1_center = (self.x + rocket_img.get_width() // 2, self.y + rocket_img.get_height() // 2)
-        rocket2_center = (other_rocket.x + rocket_img.get_width() // 2, other_rocket.y + rocket_img.get_height() // 2)
+class Drone:
+    def __init__(self, x1, y1, x2, y2):
+        self.booster_1 = Booster(x1, y1)
+        self.booster_2 = Booster(x2, y2, isBooster2=True)
 
-        # Calculate distance and direction vector
-        distance = math.sqrt((rocket1_center[0] - rocket2_center[0]) ** 2 + (rocket1_center[1] - rocket2_center[1]) ** 2)
-        direction = ((rocket2_center[0] - rocket1_center[0]), (rocket2_center[1] - rocket1_center[1]))
+    def update(self):
+        self.booster_1.update()
+        self.booster_2.update()
+        self.booster_1.adjust_position(self.booster_2)
+        self.booster_2.adjust_position(self.booster_1)
 
-        # Normalize direction vector
-        if distance > 0:
-            direction = (direction[0] / distance, direction[1] / distance)
+    def draw(self):
+        self.booster_1.draw()
+        self.booster_2.draw()
+        self.booster_1.draw_target()
+        self.booster_2.draw_target()
 
-        # Calculate rod end positions
-        rod_length = 100
-        rod_end1 = (rocket1_center[0] + direction[0] * rod_length, rocket1_center[1] + direction[1] * rod_length)
-        rod_end2 = (rocket2_center[0] - direction[0] * rod_length, rocket2_center[1] - direction[1] * rod_length)
+    def get_score(self):
+        return self.booster_1.score + self.booster_2.score
 
-        # Draw the rod
-        pygame.draw.line(screen, (255, 255, 255), rod_end1, rod_end2, 3)
-
-# Create instances of Rocket
-rocket = Rocket(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2)  # Example position for the first rocket
-rocket2 = Rocket(SCREEN_WIDTH // 2 + 120, SCREEN_HEIGHT // 2)  # Example position for the second rocket
+# Create instances of drone
+drone = Drone(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2, SCREEN_WIDTH // 2 + 120, SCREEN_HEIGHT // 2)  # Example positions
 
 # Main game loop
 running = True
@@ -215,26 +253,23 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    rocket.update()
-    rocket2.update(isRocket2=True)
+    drone.update()
 
     screen.fill((0, 0, 0))
-    rocket.draw()
-    rocket2.draw()
-    rocket.adjust_position(rocket2)
-    rocket2.adjust_position(rocket)
-    rocket.draw_target()
-    rocket2.draw_target()
-
-    # Draw connecting rod between rockets
-    rocket.draw_connecting_rod(rocket2)
+    drone.draw()
 
     # Display score
     font = pygame.font.SysFont(None, 36)
-    score_text = font.render(f'Score: {rocket.score:.2f}', True, (255, 255, 255))
+    score_text = font.render(f'Score: {drone.get_score():.2f}', True, (255, 255, 255))
     screen.blit(score_text, (10, 10))
 
-    # Check if 20 seconds have passed
+    # Display tilt of the rod
+    font = pygame.font.SysFont(None, 36)
+    tilt_text = font.render(f'Tilt: {drone.booster_1.get_tilt(drone.booster_2):.2f}', True, (255, 255, 255))
+    screen.blit(tilt_text, (10, 40))
+
+
+    # Check if game duration has passed
     current_time = pygame.time.get_ticks()
     if current_time - start_time >= GAME_DURATION:
         running = False
