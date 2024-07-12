@@ -1,0 +1,26 @@
+import configparser
+
+# create a class that returns this when called
+# Constants (assuming these are loaded from config.ini as before)
+# config = configparser.ConfigParser()
+# config.read('config.ini')
+# SCREEN_WIDTH = int(config['DEFAULT']['SCREEN_WIDTH'])
+# SCREEN_HEIGHT = int(config['DEFAULT']['SCREEN_HEIGHT'])
+# DIMENSION_MULTIPLIER = float(config['DEFAULT']['DIMENSION_MULTIPLIER'])
+# ANGLE_RANGE = float(config['DEFAULT']['ANGLE_RANGE'])
+# INITIAL_BOOSTER_ANGLE_1 = float(config['DEFAULT']['INITIAL_BOOSTER_ANGLE_1'])
+# INITIAL_BOOSTER_ANGLE_2 = float(config['DEFAULT']['INITIAL_BOOSTER_ANGLE_2'])
+# BOOSTER_ANGLE_INCREMENT = float(config['DEFAULT']['BOOSTER_ANGLE_INCREMENT'])
+# INITIAL_FIRE_ON = config.getboolean('DEFAULT', 'INITIAL_FIRE_ON')
+# THRUST = float(config['DEFAULT']['THRUST'])
+# GRAVITY = float(config['DEFAULT']['GRAVITY'])
+# THRUST_X_COMPONENT = float(config['DEFAULT']['THRUST_X_COMPONENT'])
+# THRUST_Y_COMPONENT = float(config['DEFAULT']['THRUST_Y_COMPONENT'])
+# DRONE_WIDTH = float(config['DEFAULT']['DRONE_BODY_WIDTH'])
+# DRONE_HEIGHT = float(config['DEFAULT']['DRONE_BODY_HEIGHT'])
+# BOOSTER_HEIGHT = float(config['DEFAULT']['BOOSTER_HEIGHT'])
+# BOOSTER_WIDTH = float(config['DEFAULT']['BOOSTER_WIDTH'])
+# FIRE_HEIGHT = float(config['DEFAULT']['FIRE_HEIGHT'])
+# FIRE_WIDTH = float(config['DEFAULT']['FIRE_WIDTH'])
+# TARGET_SIDE = float(config['DEFAULT']['TARGET_SIDE'])
+# GAME_DURATION = int(config['DEFAULT']['GAME_DURATION']) * 1000
