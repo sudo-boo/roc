@@ -12,7 +12,7 @@ The clip displays two drones coordinating with each other to collect the rewards
 
 <be>
 
-**roc-swarm** is a project that explores the coordination between two drones using NEAT (Neuro-Evolution of Augmenting Topologies) for flight control.
+**roc-swarm** is a project that explores the coordination between drones/agents that were trained using NEAT (Neuro-Evolution of Augmenting Topologies) for flight control.
 The goal is to demonstrate how drones can autonomously collaborate to achieve a common objective in a simulated environment.
 
 I've tried it for two agents, and there is a lot to potentially develop like increasing multiple (both count-wise and type-wise) agents, adding responses to different terrains, etc.
