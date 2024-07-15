@@ -5,7 +5,7 @@ The clip displays two drones coordinating with each other to collect the rewards
 <br>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/af6926fb-df1a-42ae-a53d-7154fac4e0ed" alt="roc-swarm Demo" width="700" height="450">
+  <img src="https://github.com/user-attachments/assets/af6926fb-df1a-42ae-a53d-7154fac4e0ed" alt="roc-swarm Demo" width="850" height="550">
 </p>
 
 ---
